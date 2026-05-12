@@ -461,38 +461,49 @@ class PyGameRenderer(BaseRenderer):
 
         cr, cg, cb = color
 
-        # --- fast path: numpy ------------------------------------------------
+        # --- fast path: numpy → single surface via surfarray -----------------
         try:
             import numpy as np
             import pygame.surfarray
 
-            arr = np.array(grid, dtype=np.float32)
-            peak = arr.max()
+            arr = np.array(grid, dtype=np.float64)
+            peak = float(arr.max()) if arr.size > 0 else 0
             if peak < 0.01:
                 return
 
-            alpha = np.clip(arr / peak * 180, 0, 180).astype(np.uint8)
+            alpha = np.clip(arr / peak * 255, 0, 255).astype(np.uint8)
             alpha[arr < 0.01] = 0
 
-            rgba = np.zeros((w, hh, 4), dtype=np.uint8)
+            # Create RGBA surface using make_surface, handling both (h,w,4) and
+            # the older pygame requirements for 3D arrays on different platforms
+            rgba = np.zeros((hh, w, 4), dtype=np.uint8)
             rgba[:, :, 0] = cr
             rgba[:, :, 1] = cg
             rgba[:, :, 2] = cb
-            rgba[:, :, 3] = alpha
+            rgba[:, :, 3] = alpha.T
+
+            # pygame.surfarray.make_surface expects contiguous arrays
+            if not rgba.flags['C_CONTIGUOUS']:
+                rgba = np.ascontiguousarray(rgba)
 
             surf = pygame.surfarray.make_surface(rgba)
-        except ImportError:
+            # Verify it's a valid surface
+            if surf is None or surf.get_width() == 0 or surf.get_height() == 0:
+                raise ValueError("Empty surface created")
+
+        except (ImportError, ValueError, TypeError, SystemError) as e:
             # --- fallback: per-cell surfaces (original logic) ----------------
+            # print(f"[DEBUG] Pheromone numpy failed, falling back: {e}")
             surf = pygame.Surface((w, hh), pygame.SRCALPHA)
             surf.fill((0, 0, 0, 0))
             for x in range(w):
                 for y in range(hh):
                     v = grid[x][y]
                     if v > 0.01:
-                        alpha = min(180, max(1, int(v * 180)))
+                        alpha = min(255, max(1, int(v * 255)))
                         px_surf = pygame.Surface((1, 1), pygame.SRCALPHA)
                         px_surf.fill((cr, cg, cb, alpha))
-                        surf.blit(px_surf, (int(x * scale), int(y * scale)))
+                        surf.blit(px_surf, (x, y), special_flags=pygame.BLEND_RGBA_ADD)
 
         # scale & blit
         dw, dh = int(w * scale), int(hh * scale)
