@@ -718,6 +718,8 @@ class PyGameRenderer(BaseRenderer):
         if self._screen is None:
             self._init_pygame()
 
+        import pygame
+
         screen = self._screen
         s = min(
             self._current_w / max(world.width, 1),
