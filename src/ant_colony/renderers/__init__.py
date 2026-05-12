@@ -203,9 +203,19 @@ class PyGameRenderer(BaseRenderer):
         import pygame
         pygame.init()
 
-        self._screen = pygame.display.set_mode(
-            (self.window_w, self.window_h), pygame.RESIZABLE,
-        )
+        # Use multiple flags for better cross-platform support,
+        # especially macOS Metal backends which may need extra flags
+        try:
+            self._screen = pygame.display.set_mode(
+                (self.window_w, self.window_h),
+                pygame.RESIZABLE | pygame.DOUBLEBUF | pygame.HWSURFACE
+            )
+        except Exception:
+            # Fallback without HWSURFACE
+            self._screen = pygame.display.set_mode(
+                (self.window_w, self.window_h),
+                pygame.RESIZABLE | pygame.DOUBLEBUF
+            )
         pygame.display.set_caption(self.title)
         self._clock = pygame.time.Clock()
 
@@ -721,8 +731,16 @@ class PyGameRenderer(BaseRenderer):
                 self._current_w = event.w
                 self._current_h = event.h
                 self._screen = pygame.display.set_mode(
-                    (event.w, event.h), pygame.RESIZABLE,
+                    (event.w, event.h), pygame.RESIZABLE
                 )
+            # Handle SDL2 window events for resize (newer pygame versions)
+            elif event.type == pygame.WINDOWEVENT:
+                if event.event == pygame.WINDOWEVENT_RESIZED:
+                    self._current_w = event.x
+                    self._current_h = event.y
+                    self._screen = pygame.display.set_mode(
+                        (event.x, event.y), pygame.RESIZABLE
+                    )
         return self._running
 
     def render(self, world, step: int):
