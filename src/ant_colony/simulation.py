@@ -196,6 +196,9 @@ class AntColonySimulation:
           pheromone evaporation/diffusion → colony manager → agent FSMs →
           gradient-following → trail-depositing → wandering → obstacle avoidance
         """
+        # Check renderer's pause state (toggled via SPACE in pygame renderer)
+        if getattr(self._renderer, "_paused", False):
+            return
         if self._paused:
             return
 
