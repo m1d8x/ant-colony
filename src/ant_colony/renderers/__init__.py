@@ -730,17 +730,10 @@ class PyGameRenderer(BaseRenderer):
             elif event.type == pygame.VIDEORESIZE:
                 self._current_w = event.w
                 self._current_h = event.h
+                # Recreate screen at new size
                 self._screen = pygame.display.set_mode(
                     (event.w, event.h), pygame.RESIZABLE
                 )
-            # Handle SDL2 window events for resize (newer pygame versions)
-            elif event.type == pygame.WINDOWEVENT:
-                if event.event == pygame.WINDOWEVENT_RESIZED:
-                    self._current_w = event.x
-                    self._current_h = event.y
-                    self._screen = pygame.display.set_mode(
-                        (event.x, event.y), pygame.RESIZABLE
-                    )
         return self._running
 
     def render(self, world, step: int):
