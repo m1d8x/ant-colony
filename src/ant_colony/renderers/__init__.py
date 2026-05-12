@@ -100,6 +100,8 @@ class PyGameRenderer(BaseRenderer):
         self._clock = None
         self._font = None
         self._running = False
+        self._current_w = self.window_w
+        self._current_h = self.window_h
 
     # ── Lifecycle ────────────────────────────────────────────────────────
 
@@ -109,6 +111,7 @@ class PyGameRenderer(BaseRenderer):
         pygame.init()
         self._screen = pygame.display.set_mode(
             (self.window_w, self.window_h),
+            pygame.RESIZABLE,
         )
         pygame.display.set_caption(self.title)
         self._clock = pygame.time.Clock()
@@ -129,6 +132,12 @@ class PyGameRenderer(BaseRenderer):
                     self._running = False
                 elif event.key == pygame.K_SPACE:
                     pass  # pause toggled externally
+            elif event.type == pygame.VIDEORESIZE:
+                self._current_w = event.w
+                self._current_h = event.h
+                self._screen = pygame.display.set_mode(
+                    (event.w, event.h), pygame.RESIZABLE
+                )
         return self._running
 
     def close(self):
@@ -150,7 +159,11 @@ class PyGameRenderer(BaseRenderer):
         import pygame
 
         screen = self._screen
-        s = self.scale
+        # Dynamic scale from current window vs world dimensions
+        s = min(
+            self._current_w / max(world.width, 1),
+            self._current_h / max(world.height, 1),
+        )
         screen.fill(_COLOR_BG)
 
         # ── Obstacles ──────────────────────────────────────────────────
