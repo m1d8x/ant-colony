@@ -1,0 +1,35 @@
+# Ant Colony Simulation — World Configuration
+# All spatial values are in grid cells.
+
+dimensions:
+  width: 200
+  height: 200
+
+seed: 42  # rng seed for reproducible worlds
+
+nest_start_size: 3  # initial nest radius in tiles (3 → 7×7 = 49 tiles)
+
+obstacle_count: 25  # number of rock obstacles to place
+water_body_count: 4  # number of water bodies to place
+
+food:
+  bush_count: 12
+  bush_value: 30
+  bush_respawn_ticks: 80  # ticks after depletion before bush regrows
+  mushroom_count: 8
+  mushroom_value: 50
+  mushroom_respawn_ticks: 120
+  crystal_count: 4
+  crystal_value: 100
+  crystal_respawn_ticks: 200
+
+terrain:
+  scale: 20.0        # Perlin noise scale (smaller = broader features)
+  octaves: 4         # noise octaves for detail
+  persistence: 0.5   # amplitude decay per octave
+
+movement_cost:
+  default: 1.0
+  nest: 0.5          # faster inside the nest
+  rock: null         # impassable
+  water: null        # impassable

@@ -1,0 +1,27 @@
+# ── World environment configuration ───────────────────────────────────────
+# All parameters tuneable per-session.
+
+world:
+  # Grid dimensions in cells
+  width: 200
+  height: 200
+
+  # RNG seed for reproducibility
+  seed: 42
+
+  # Initial nest size (half-width of the square)
+  nest_start_size: 3
+
+  # Obstacles
+  obstacle_count: 25       # rock clusters
+  water_body_count: 4      # water bodies (larger, smoother)
+
+  # Food patches
+  bush_count: 12
+  mushroom_count: 8
+  crystal_count: 4
+
+  # Terrain (Perlin noise parameters)
+  terrain_scale: 12.0      # higher = larger features
+  terrain_octaves: 4       # more = finer detail
+  terrain_persistence: 0.5 # lower = smoother
