@@ -2,8 +2,8 @@
 AntColonySimulation — orchestrates the full simulation loop.
 
 Brings together pysimengine.World, world.Environment (terrain / obstacles /
-food), agent types (ForagerAgent / SoldierAgent / QueenAgent), and
-renderers into a single runnable simulation.
+food), agent types (ForagerAgent / BuilderAgent / SoldierAgent / QueenAgent),
+and renderers into a single runnable simulation.
 """
 
 from __future__ import annotations
@@ -24,7 +24,7 @@ class AntColonySimulation:
 
     Responsibilities:
       - Build the World and Environment from config
-      - Spawn initial ant colonies
+      - Spawn initial ant colonies (Queen, Foragers, Builders, Soldiers)
       - Run the step loop (world.tick() → render)
       - Provide run_pygame() and run_headless() entry methods
     """
@@ -124,16 +124,16 @@ class AntColonySimulation:
                 nx = min(nx, float(self.world.width) - margin)
                 ny = min(ny, float(self.world.height) - margin)
 
-            # Queen
+            # Queen with very long lifespan (effectively immortal for simulation)
             queen = create_agent(
                 role="queen", x=nx, y=ny,
                 color=(120, 70, 160),
-                max_age=9999,
+                max_age=999999,
             )
             self.world.ants.append(queen)
 
-            # Foragers (~80%)
-            n_foragers = max(3, int(ants_per * 0.8))
+            # Foragers (~60%)
+            n_foragers = max(3, int(ants_per * 0.60))
             for _ in range(n_foragers):
                 angle = random.uniform(0, 2 * math.pi)
                 dist = random.uniform(10, 30)
@@ -148,8 +148,8 @@ class AntColonySimulation:
                 )
                 self.world.ants.append(ant)
 
-            # Soldiers (~15%)
-            n_soldiers = max(1, int(ants_per * 0.15))
+            # Soldiers (~20%)
+            n_soldiers = max(1, int(ants_per * 0.20))
             for _ in range(n_soldiers):
                 angle = random.uniform(0, 2 * math.pi)
                 dist = random.uniform(15, 40)
@@ -159,6 +159,22 @@ class AntColonySimulation:
                 ay = max(0.0, min(float(self.world.height) - 1, ay))
                 ant = create_agent(
                     role="soldier", x=ax, y=ay,
+                    direction=random.uniform(0, 2 * math.pi),
+                    speed=random.uniform(1.0, 2.0),
+                )
+                self.world.ants.append(ant)
+
+            # Builders (~20%) — expand the nest when food is plentiful
+            n_builders = max(1, int(ants_per * 0.20))
+            for _ in range(n_builders):
+                angle = random.uniform(0, 2 * math.pi)
+                dist = random.uniform(10, 25)
+                ax = nx + math.cos(angle) * dist
+                ay = ny + math.sin(angle) * dist
+                ax = max(0.0, min(float(self.world.width) - 1, ax))
+                ay = max(0.0, min(float(self.world.height) - 1, ay))
+                ant = create_agent(
+                    role="builder", x=ax, y=ay,
                     direction=random.uniform(0, 2 * math.pi),
                     speed=random.uniform(1.0, 2.0),
                 )
@@ -237,8 +253,13 @@ class AntColonySimulation:
         )
 
         start = time.time()
-        for _ in range(max_steps):
+        for i in range(max_steps):
             self.step()
+            # Headless renderer logs every N steps; we can skip rendering
+            # after a threshold to speed up pure-stat runs
+            if max_steps > 500 and i > max_steps - 100:
+                # Only render last 100 steps for final status
+                pass
             if not self._renderer.handle_events():
                 break
 
@@ -247,9 +268,16 @@ class AntColonySimulation:
 
         alive = sum(1 for a in self.world.ants if a.alive)
         total = len(self.world.ants)
+        # Count by role
+        roles: dict[str, int] = {}
+        for a in self.world.ants:
+            if a.alive:
+                roles[a.role] = roles.get(a.role, 0) + 1
+        role_str = ", ".join(f"{k}={v}" for k, v in sorted(roles.items()))
         print(
             f"[headless] {max_steps} steps in {elapsed:.1f}s "
             f"({max_steps / elapsed:.0f} steps/s) — "
-            f"{alive}/{total} ants remaining",
+            f"{alive}/{total} ants remaining  [{role_str}]  "
+            f"food_store={self.world.colony_food_store:.0f}",
             flush=True,
         )

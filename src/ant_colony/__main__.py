@@ -13,8 +13,19 @@ from ant_colony import __version__
 from ant_colony.simulation import AntColonySimulation
 
 
+def _flatten_dict(d: dict, parent_key: str = "", sep: str = ".") -> dict:
+    """Flatten a nested dict so both flat and dotted keys are available."""
+    items = {}
+    for k, v in d.items():
+        new_key = f"{parent_key}{sep}{k}" if parent_key else k
+        if isinstance(v, dict):
+            items.update(_flatten_dict(v, new_key, sep=sep))
+        items[k] = v  # keep the bare key too
+    return items
+
+
 def _load_config(path: str | None) -> dict:
-    """Load config from a YAML file, returning a dict."""
+    """Load config from a YAML file, returning a flattened dict."""
     # Default stock config
     cfg = {
         "width": 1200,
@@ -31,17 +42,18 @@ def _load_config(path: str | None) -> dict:
         "initial_food": 10,
         "evap_rate": 0.002,
         "pheromone_cell_size": 4.0,
+        "log_interval": 50,
     }
 
     if path is not None:
-        # Attempt YAML load
         try:
             import yaml
             with open(path) as f:
                 user_cfg = yaml.safe_load(f) or {}
-                cfg.update(user_cfg)
+                # Flatten nested keys so both 'width' and 'world.width' work
+                flat = _flatten_dict(user_cfg)
+                cfg.update(flat)
         except ImportError:
-            # Fallback: simple key: value parser for common formats
             print(f"[config] PyYAML not available, trying simple parse of {path}",
                   file=sys.stderr)
             with open(path) as f:
@@ -52,12 +64,8 @@ def _load_config(path: str | None) -> dict:
                     key, _, val = line.partition(":")
                     key = key.strip()
                     val = val.strip().strip('"').strip("'")
-                    # Try numeric conversion
                     try:
-                        if "." in val:
-                            cfg[key] = float(val)
-                        else:
-                            cfg[key] = int(val)
+                        cfg[key] = float(val) if "." in val else int(val)
                     except (ValueError, TypeError):
                         cfg[key] = val
         except FileNotFoundError:
@@ -72,7 +80,7 @@ def _load_config(path: str | None) -> dict:
 
 def _resolve_config_path(path: str | None) -> str | None:
     """Resolve config path relative to the package, a custom path, or
-    the default location under configs/."""
+    the default location."""
     pkg_dir = os.path.dirname(os.path.abspath(__file__))
     repo_dir = os.path.dirname(os.path.dirname(pkg_dir))  # src/
     project_dir = os.path.dirname(repo_dir)  # ant-colony-sim/
@@ -89,21 +97,23 @@ def _resolve_config_path(path: str | None) -> str | None:
         proj_path = os.path.join(project_dir, path)
         if os.path.exists(proj_path):
             return proj_path
-        # Try relative to package dir
+        # Try relative to package dir (e.g. configs/cfg.yaml)
         pkg_path = os.path.join(pkg_dir, path)
         if os.path.exists(pkg_path):
             return pkg_path
         print(f"[config] config not found: {path}", file=sys.stderr)
         sys.exit(1)
 
-    # Default: look for configs/default.yaml relative to project root
-    default_path = os.path.join(project_dir, "configs", "default.yaml")
-    if os.path.exists(default_path):
-        return default_path
-    # Also check cwd
-    cwd_default = os.path.join(os.getcwd(), "configs", "default.yaml")
-    if os.path.exists(cwd_default):
-        return cwd_default
+    # Default: check several common locations
+    candidates = [
+        os.path.join(project_dir, "configs", "default.yaml"),
+        os.path.join(os.getcwd(), "configs", "default.yaml"),
+        os.path.join(pkg_dir, "config", "config.yaml"),
+        os.path.join(project_dir, "config", "config.yaml"),
+    ]
+    for c in candidates:
+        if os.path.exists(c):
+            return c
     return None
 
 
@@ -116,13 +126,13 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--mode", "-m",
         choices=["pygame", "headless"],
-        default=None,  # derived: pygame if display available, else headless
+        default=None,
         help="Run mode (default: pygame when display is available)",
     )
     parser.add_argument(
         "--config", "-c",
         default=None,
-        help="Path to YAML config file (default: configs/default.yaml)",
+        help="Path to YAML config file",
     )
     parser.add_argument(
         "--output", "-o",

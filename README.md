@@ -1,61 +1,61 @@
 # Ant Colony Simulation
 
-Emergent ant colony simulation with pheromone trails, role-based agents,
-and interactive visualisation.
+Emergent ant colony simulation with pheromone trails, multiple agent types, and procedural world generation.
 
-## Quick Start
+## Install
 
 ```bash
-# Install
-pip install -e ".[dev]"
+cd ant-colony-sim
+pip install -e .
+```
 
-# Headless batch run (200 steps)
-python -m ant_colony --mode headless --steps 200
+## Run
 
-# Interactive pygame mode (if display is available)
+```bash
+# Headless mode (batch, logs stats to stdout)
+python -m ant_colony --mode headless --steps 1000
+
+# Interactive mode with display
 python -m ant_colony --mode pygame
 
 # Custom config
-python -m ant_colony --config configs/default.yaml --steps 500
+python -m ant_colony --mode headless --steps 500 --config configs/default.yaml
+
+# Change agent count / colonies via config
+python -m ant_colony --mode headless --steps 200 -s 200
 ```
 
-## CLI
+## Controls (Pygame mode)
 
-| Flag           | Description                                |
-|----------------|--------------------------------------------|
-| `--mode`, `-m` | `headless` or `pygame` (auto-detected)     |
-| `--config`, `-c` | Path to YAML config file                |
-| `--steps`, `-s` | Number of simulation steps (headless)    |
-| `--output`, `-o` | Output path (headless recording)        |
-| `--version`, `-v` | Show version                            |
+| Key | Action |
+|-----|--------|
+| ESC | Quit |
+| SPACE | Pause |
 
 ## Architecture
 
-```
-ant_colony/
-├── agents/         — Role-specific ant types (forager, soldier, queen, builder)
-│   ├── forager.py  — SEARCH → FOUND → CARRYING → RETURNING FSM
-│   ├── soldier.py  — PATROL → COMBAT → GUARD FSM
-│   ├── queen.py    — Stationary spawner
-│   └── builder.py  — GATHER → BUILD FSM
-├── behaviors/      — Steering behaviours (pheromone-follow, obstacle-avoid, etc.)
-├── pysimengine/    — Core engine (Agent, World, Behavior base classes)
-├── world/          — Environment generation (terrain, obstacles, food, nest)
-├── pheromones/     — PHGrid: numpy-backed multi-layer pheromone grid
-├── renderers/      — Pygame + headless rendering backends
-├── simulation.py   — AntColonySimulation: main loop coordinator
-└── __main__.py     — CLI entry point
-```
+- **pysimengine/** — Core simulation engine. `World` holds pheromone grids, obstacle map, and ant list. `tick()` runs: pheromone diffusion/evaporation → colony manager → agent FSMs → behaviors.
+- **agents/** — Role-specific FSMs: `ForagerAgent` (SEARCHING→FOUND_FOOD→CARRYING→RETURNING), `BuilderAgent` (IDLE→GATHERING→BUILDING), `SoldierAgent` (PATROLLING→COMBAT→GUARDING), `QueenAgent` (SPAWNING/IDLE).
+- **behaviors/** — Composable behaviors: `FollowGradient` pheromone steering, `DepositTrail` pheromone laying, `WanderWithPersistence` random walk, `AvoidObstacles` collision avoidance, `ColonyManager` spawning/role reassignment.
+- **world/** — Procedural world generation: `Nest` (expandable tiles), `ObstacleGrid` (blob-shaped rocks/water), `FoodManager` (bush/mushroom/crystal patches with depletion/respawn), `TerrainMap` (Perlin noise elevation).
+- **renderers/** — Pygame and headless renderers with pheromone heatmaps, HUD with live stats.
+- **simulation.py** — Glue layer that wires everything together: creates World + Environment, spawns agents, runs the tick loop.
 
 ## Tests
 
 ```bash
-python -m pytest tests/ -v
+pytest tests/ -v
 ```
 
-## Configuration
+## Config
 
-Edit `configs/default.yaml` to tune:
-- World dimensions (200×200 cells)
-- Obstacle / food / terrain generation
-- Simulation seed for reproducibility
+Edit `config/config.yaml` in the package directory or pass `--config path/to/config.yaml`:
+
+```yaml
+n_colonies: 2
+num_agents: 50
+seed: 42
+world:
+  width: 200
+  height: 200
+```

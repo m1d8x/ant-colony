@@ -30,7 +30,7 @@ class Agent:
     food_capacity: float = 10.0
     alive: bool = True
     age: int = 0
-    max_age: int = 600
+    max_age: int = 5000
     color: tuple[int, int, int] = (200, 200, 200)   # body colour
     memory: dict[str, Any] = field(default_factory=dict)
 

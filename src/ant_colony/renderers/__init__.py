@@ -172,7 +172,6 @@ class PyGameRenderer(BaseRenderer):
             radius = max(2, int(3 * s))
             if amount > 0:
                 pygame.draw.circle(screen, _COLOR_FOOD, (px, py), radius)
-                # Inner fill proportional to remaining amount
                 fill_r = max(1, int(radius * min(1.0, amount / 200.0)))
                 inner = (100, 255, 100)
                 pygame.draw.circle(screen, inner, (px, py), fill_r)
@@ -180,11 +179,9 @@ class PyGameRenderer(BaseRenderer):
                 pygame.draw.circle(screen, _COLOR_FOOD_DEPLETED, (px, py), radius, 1)
 
         # ── Pheromone heatmap ──────────────────────────────────────────
-        # food_pheromone — green tint
         self._draw_pheromone_layer(
             screen, world.food_pheromone, s, _COLOR_PHEROMONE_FOOD
         )
-        # home_pheromone — blue tint
         self._draw_pheromone_layer(
             screen, world.home_pheromone, s, _COLOR_PHEROMONE_HOME
         )
@@ -195,14 +192,6 @@ class PyGameRenderer(BaseRenderer):
         nest_r = max(4, int(6 * s))
         pygame.draw.circle(screen, _COLOR_NEST_RING, (nx, ny), nest_r, 2)
         pygame.draw.circle(screen, _COLOR_NEST, (nx, ny), max(2, int(3 * s)))
-
-        # ── Dead bodies ────────────────────────────────────────────────
-        for agent in world.ants:
-            if agent.alive:
-                continue
-            dx = int(agent.x * s)
-            dy = int(agent.y * s)
-            pygame.draw.circle(screen, _COLOR_DEAD, (dx, dy), max(1, int(1.5 * s)))
 
         # ── Ants (alive) ───────────────────────────────────────────────
         for agent in world.ants:
@@ -315,4 +304,4 @@ class HeadlessRenderer(BaseRenderer):
             )
 
     def close(self):
-        print("[headless] simulation complete.", flush=True)
+        pass
